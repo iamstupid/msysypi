@@ -1,0 +1,97 @@
+use crate::eeyore::inst::*;
+grammar;
+match{
+    "&&",
+    "||",
+    "==",
+    "!=",
+    "<=",
+    ">=",
+    "<",
+    ">",
+    "+",
+    "-",
+    "*",
+    "/",
+    "%",
+    "!",
+    "[",
+    "]",
+    ":",
+    "=",
+    "var",
+    "end",
+    "goto",
+    "param",
+    "call",
+    "if",
+    "return",
+    "l",
+    "T",
+    "t",
+    "p",
+}else{
+    r"f_([a-zA-Z0-9]*)", // function
+    r"0|[1-9][0-9]*", // nat
+    r"//[^\n\r]*" => { }, // comment
+    r"/\*([^\*]*\*+[^\*/])*([^\*]*\*+|[^\*])*\*/" => { }, // comment
+    r"\s+" => {} // space
+}
+Num:i32 = { Nat, "-" <Nat> => -<> };
+Nat:i32 = r"0|[1-9][0-9]*" => i32::from_str_radix(<>,10).unwrap();
+Fun:FnName = r"f_([a-zA-Z0-9]*)" => FnName(String::from(&<>[2..]));
+Op:Oper = {
+    "*" => Oper::Mul,
+    "/" => Oper::Div,
+    "%" => Oper::Mod,
+    "+" => Oper::Add,
+    "-" => Oper::Sub,
+    "&&"=> Oper::And,
+    "||"=> Oper::Or
+};
+LOp:Oper = {
+    "<" => Oper::Lt,
+    ">" => Oper::Gt,
+    "<="=> Oper::Le,
+    ">="=> Oper::Ge,
+    "=="=> Oper::Eq,
+    "!="=> Oper::Ne
+};
+Opp:Oper = {Op,LOp};
+Var:Var = {
+    "T" <Nat> => Var(VarUsage::Var, <>),
+    "t" <Nat> => Var(VarUsage::Temp, <>),
+    "p" <Nat> => Var(VarUsage::Param, <>)
+};
+Label:i32 = "l" <Nat>;
+#[inline]
+LVal:LVal = {
+    Var => LVal::Sym(<>),
+    Var RVal => LVal::SymA(<>)
+};
+RVal:RVal = {
+    Var => RVal::Sym(<>),
+    Num => RVal::Int(<>)
+};
+IInst:Inst = {
+    "var" <Nat> <Var> => Inst::DArr(<>),
+    "var" <Var> => Inst::DI(<>),
+    <LVal> "=" <RVal> => Inst::Ass(<>)
+};
+pub II:Inst = {
+    IInst,
+    <Var> "=" <Var> "[" <RVal> "]" => Inst::Take(<>),
+    <Var> "=" <RVal> <Opp> <RVal> => Inst::Cpt(<>),
+    <a:Var> "=" "-" <b:Var> => Inst::UCpt(a,UOper::Neg,RVal::Sym(b)),
+    <a:Var> "=" "!" <b:RVal> => Inst::UCpt(a,UOper::Neg,b),
+    "if" <RVal> <LOp> <RVal> "goto" <Label> => Inst::Brch(<>),
+    "goto" <Label> => Inst::Jump(<>),
+    <Label> ":" => Inst::Label(<>),
+    "param" <RVal> => Inst::Param(<>),
+    "call" <Fun> => Inst::Call(<>),
+    <Var> "=" "call" <Fun> => Inst::CallFn(<>),
+    "return" <RVal> => Inst::Return(<>),
+    "return" => Inst::Ret,
+    <Fun> "[" <Nat> "]" => Inst::Fn(<>),
+    "end" <Fun> => Inst::FnE(<>)
+};

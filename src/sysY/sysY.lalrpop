@@ -1,4 +1,4 @@
-use crate::sysY::ast;
+use crate::sysY::ast::{CompUnit,DeclType,FunctType,UOper,Oper,VarDecls,Decl,VarDecl,Exp,Con,VarInit,InitCont,ExprInit,Func,BlockItem,Block,Stmt,LVal,Expr,CondExpr};
 grammar;
 match{
     "&&",
@@ -7,6 +7,8 @@ match{
     "!=",
     "<=",
     ">=",
+    "<",
+    ">",
     "+",
     "-",
     "*",
@@ -22,8 +24,185 @@ match{
     ")",
     ";",
     "=",
+    "const",
+    "int",
+    "void",
+    "while",
+    "if",
+    "break",
+    "continue",
+    "return",
+    "else"
+}else{
     r"[a-zA-Z_][a-zA-Z0-9_]*", // keyword / identifier
-    r"(0[xX][0-9a-fA-F]*)|(0[0-7]*)|([1-9][0-9]*)", // int
+    r"(0[xX][0-9a-fA-F]*)", // hex number
+    r"(0[0-7]*)", // oct number
+    r"([1-9][0-9]*)", // decimal
     r"//[^\n\r]*[\n\r]*" => { }, // comment
-    r"/\*([^\*]*\*+[^\*/])*([^\*]*\*+|[^\*])*\*/" => { } // comment
+    r"/\*([^\*]*\*+[^\*/])*([^\*]*\*+|[^\*])*\*/" => { }, // comment
+    r"\s+" => {} // space
 }
+/// Macro
+Comma<T>: Vec<T> = { // (1)
+    <mut v:(<T> ",")*> <e:T?> => match e { // (2)
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+Oper<Op,T>:Box<Expr> = {
+    Oper<Op,T> Op T => Box::new(Expr::Op(<>)),
+    T
+};
+/// Program
+pub Program:Vec<Box<CompUnit>> = {
+    CompUnit+
+};
+CompUnit:Box<CompUnit> = {
+    Decl => Box::new(CompUnit::Decl(<>)),
+    Func => Box::new(CompUnit::Func(<>))
+};
+/// Decls
+Decl:Box<Decl> = {
+    ConstDecl => Box::new(Decl(DeclType::Const,<>)),
+    VarDecl => Box::new(Decl(DeclType::Var,<>))
+};
+ConstDecl:VarDecls = {
+    "const" "int" <cdef:Comma<ConstDef>> ";" => cdef
+};
+VarDecl:VarDecls = {
+    "int" <vdef:Comma<VarDef>> ";" => vdef
+};
+Dims = ("[" <Exp> "]")*;
+ConstDef : Box<VarDecl> = {
+    <name:Ident> <dims:Dims> "=" <init:InitVal> => Box::new(VarDecl{
+        dtype:DeclType::Const, name, dims, init:VarInit::I(init)
+    })
+};
+VarDef : Box<VarDecl> = {
+    <name:Ident> <dims:Dims> <init:("=" <InitVal>)?> => Box::new(VarDecl{
+        dtype:DeclType::Var, name, dims, init:match init {
+            None => VarInit::Nil,
+            Some(e) => VarInit::I(e)
+        }
+    })
+};
+InitVal : ExprInit = {
+    Exp => Box::new(InitCont::Val(<>)),
+    "{" <Comma<InitVal>> "}" => Box::new(InitCont::Vax(<>))
+};
+/// Functions
+Func : Box<Func> = {
+    "int" <name:Ident> "(" <param:Comma<FuncParam>> ")" <body:Block> => Box::new(Func{<>,ret:FunctType::Int}),
+    "void" <name:Ident> "(" <param:Comma<FuncParam>> ")" <body:Block> => Box::new(Func{<>,ret:FunctType::Void})
+}
+FuncParam : Box<VarDecl> = {
+    "int" <name:Ident> <dims:ParDim?> => Box::new(VarDecl{
+        dtype:DeclType::Var, name, dims:match dims{
+            None => Vec::new(),
+            Some(e) => e
+        },init:VarInit::Nil
+    })
+};
+ParDim : Vec<Exp> = {
+    "[" "]" <mut dim:Dims> => {
+        dim.insert(0,Box::new(Expr::Nil));
+        dim
+    }
+};
+/// Block
+Block : Block = "{" <BlockItem*> "}";
+BlockItem : Box<BlockItem> = {
+    Decl => Box::new(BlockItem::Decl(<>)),
+    Stmt => Box::new(BlockItem::Stmt(<>))
+};
+Stmt : Box<Stmt> = {
+    OSt,
+    CSt
+}
+OSt : Box<Stmt> = {
+    "if" "(" <Cond> ")" <Stmt> => Stmt::If1(<>),
+    "if" "(" <Cond> ")" <CSt> "else" <OSt> => Stmt::If2(<>),
+    "while" "(" <Cond> ")" <OSt> => Stmt::Whi(<>)
+};
+CSt : Box<Stmt> = {
+    SSt => Box::new(<>),
+    "if" "(" <Cond> ")" <CSt> "else" <CSt> => Stmt::If2(<>),
+    "while" "(" <Cond> ")" <CSt> => Stmt::Whi(<>)
+}
+SSt : Stmt = {
+    <LVal> "=" <Exp> ";" => Stmt::Assign(<>),
+    <Exp?> ";" => Stmt::Expr(match <>{
+        None => Box::new(Expr::Nil),
+        Some(e) => e
+    }),
+    Block => Stmt::Block(<>),
+    "break" ";" => Stmt::Break,
+    "continue" ";" => Stmt::Continue,
+    "return" <Exp?> ";" => Stmt::Ret(match <>{
+        None => Box::new(Expr::Nil),
+        Some(e) => e
+    })
+};
+/// Expression
+Exp = AddExp;
+Cond = LOrExp;
+LVal:LVal = <name:Ident> <ind:Dims> => LVal{<>};
+Prim:Exp = {
+    "(" <Exp> ")",
+    LVal => Box::new(Expr::LVal(<>)),
+    Number => Box::new(Expr::Num(<>))
+};
+UnaryExp:Exp = {
+    Prim,
+    <Ident> "(" <Comma<Exp>> ")" => Box::new(Expr::FnCall(<>)),
+    <UnaryOp> <UnaryExp> => Box::new(Expr::UOp(<>))
+};
+MulExp = Oper<MulOp,UnaryExp>;
+AddExp = Oper<AddOp,MulExp>;
+RelExp = Oper<RelOp,AddExp>;
+EqExp  = Oper<EqOp,RelExp>;
+ConEqExp:Con = EqExp => Box::new(CondExpr::Comp(<>));
+LAndExp:Con = {
+    ConEqExp,
+    <LAndExp> "&&" <ConEqExp> => Box::new(CondExpr::And(<>))
+};
+LOrExp:Con = {
+    LAndExp,
+    <LOrExp> "||" <LAndExp> => Box::new(CondExpr::Or(<>))
+};
+//// Tokens
+UnaryOp:UOper = {
+    "+" => UOper::Pos,
+    "-" => UOper::Neg,
+    "!" => UOper::Not
+};
+MulOp:Oper = {
+    "*" => Oper::Mul,
+    "/" => Oper::Div,
+    "%" => Oper::Mod
+}
+AddOp:Oper = {
+    "+" => Oper::Add,
+    "-" => Oper::Sub
+};
+RelOp:Oper = {
+    "<" => Oper::Lt,
+    ">" => Oper::Gt,
+    "<="=> Oper::Le,
+    ">="=> Oper::Ge
+};
+EqOp:Oper = {
+    "=="=> Oper::Eq,
+    "!="=> Oper::Ne
+};
+Ident:String = {
+    r"[a-zA-Z_][a-zA-Z0-9_]*" => String::from(<>)
+};
+Number:i32 = {
+    r"(0[xX][0-9a-fA-F]*)" => i32::from_str_radix(&<>[2..],16).unwrap(),
+    r"(0[0-7]*)" => i32::from_str_radix(&<>,8).unwrap(),
+    r"([1-9][0-9]*)" => i32::from_str_radix(<>,10).unwrap()
+};

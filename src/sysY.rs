@@ -1,3 +1,6 @@
-mod ast;
+pub mod ast;
 mod util;
-mod sysY;
+pub mod sysY;
+pub mod eval;
+mod print;
+pub mod compile;
