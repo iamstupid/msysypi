@@ -150,6 +150,14 @@ pub enum Stmt{
     Continue,
     Ret(Exp)
 }
+impl Expr{
+    pub fn is_n(&self) -> bool {
+        match self{
+            &Expr::Nil => true,
+            _ => false
+        }
+    }
+}
 impl fmt::Display for Stmt{
     fn fmt(&self,f: &mut fmt::Formatter<'_>) -> fmt::Result{
         match self{

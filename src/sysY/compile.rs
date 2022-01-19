@@ -1,10 +1,11 @@
-use std::{collections::{HashMap, VecDeque}, cell::RefCell, rc::Rc};
+use std::{collections::{HashMap, VecDeque}};
 
 use crate::eeyore::inst::*;
-use crate::sysY::eval::{incast,dicast,vicast};
+use crate::sysY::eval::{dicast};
 
-use super::{ast::{CompUnit, Decl, VarDecl, InitCont, VarInit, Expr, Exp, Func, BlockItem}, eval::bmult};
+use super::{ast::{CompUnit, Decl, VarDecl, InitCont, VarInit, Expr, Exp, Func, BlockItem, Stmt, CondExpr}, eval::bmult};
 use super::ast;
+#[derive(Clone)]
 struct Vmeta{
     dim:Vec<i32>,
     vdef:Var
@@ -79,8 +80,8 @@ impl VStack{
     fn exit(&mut self)->VScope{
         self.st.pop().unwrap()
     }
-    fn find(&self, name:&String)->Option<&Vmeta>{
-        self.st.iter().rev().find_map(|t| t.map.get(name))
+    fn find(&self, name:&String)->Option<Vmeta>{
+        self.st.iter().rev().find_map(|t| t.map.get(name)).map(|f| f.clone())
     }
     fn top(&mut self)->&mut VScope{ self.st.iter_mut().rev().next().unwrap() }
 }
@@ -89,16 +90,16 @@ struct Segment{
     list: Vec<Vec<i32>>,
     ret: Option<RVal>
 }
-fn mls(a:Vec<i32>,b:Vec<i32>,c:i32)->Vec<i32>{
+fn mls(mut a:Vec<i32>,b:Vec<i32>,c:i32)->Vec<i32>{
     b.iter().for_each(|t| a.push(t+c));
     a
 }
-fn mdq(a:VecDeque<Inst>, b:VecDeque<Inst>)->VecDeque<Inst>{
+fn mdq(mut a:VecDeque<Inst>, mut b:VecDeque<Inst>)->VecDeque<Inst>{
     if a.len() < b.len(){
-        a.iter().rev().for_each(|f| b.push_front(*f));
+        a.iter().rev().for_each(|f| b.push_front(f.clone()));
         b
     }else{
-        b.iter().for_each(|f| a.push_back(*f));
+        b.iter().for_each(|f| a.push_back(f.clone()));
         a
     }
 }
@@ -119,18 +120,39 @@ impl Segment{
         }
     }
     fn pre(self) -> Segment{
-        self.list=self.list.into_iter().map(|x| x.iter().map(|z| z+1).collect()).collect();
-        self
+        let list = self.list.into_iter().map(|x| x.iter().map(|z| z+1).collect()).collect();
+        Segment{list,..self}
     }
-    fn fill(self,i:usize,lab:i32) -> Segment{
-        for i in self.list[i]{
-            let i = i as usize;
-            self.ins[i] = match self.ins[i]{
-                Inst::Brch(a,b,c,_) => Inst::Brch(a,b,c,lab),
-                Inst::Jump(_) => Inst::Jump(lab),
-                t => t
+    fn fill(mut self,i:usize,lab:i32) -> Segment{
+        for i in &self.list[i]{
+            let i = *i as usize;
+            self.ins[i] = match &self.ins[i]{
+                //          还好底下这几个都是Copy
+                //          所以rust真的只能和Copy玩是吧(😓)
+                &Inst::Brch(a,b,c,_) => Inst::Brch(a,b,c,lab),
+                &Inst::Jump(_) => Inst::Jump(lab),
+                t => t.clone()
             }
         }
+        self.list[i] = vec![];
+        self
+    }
+    fn lab(mut self,b:&mut VStack) -> (Segment,i32){
+        let label = b.get_lab();
+        let lab = Segment::from(VI::from([Inst::Label(label)]));
+        (Segment::cat(lab,self),label)
+    }
+    fn plab(mut self,a:i32) -> Segment{
+        self.ins.push_back(Inst::Label(a));
+        self
+    }
+    fn jump(mut self,lab:i32)->Segment{
+        self.ins.push_back(Inst::Jump(lab));
+        self
+    }
+    fn jumpx(mut self,c:Inst,x:i32)->Segment{
+        self.list[x as usize].push(self.ins.len() as i32);
+        self.ins.push_back(c);
         self
     }
 }
@@ -140,8 +162,8 @@ trait Comp{
 impl Comp for CompUnit{
     fn cc(&self,b:&mut VStack) -> Segment{
         match self{
-            &CompUnit::Decl(a) => a.cc(b),
-            &CompUnit::Func(a) => a.cc(b)
+            &CompUnit::Decl(ref a) => a.cc(b),
+            &CompUnit::Func(ref a) => a.cc(b)
         }
     }
 }
@@ -177,11 +199,16 @@ impl VCpl for AR<ast::Exp>{
         self.0.cz(a,b)
     }
 }
+impl VCpl for AR<&ast::Exp>{
+    fn cz(&self, a:LVal, b:&mut VStack) -> VI{
+        self.0.cz(a,b)
+    }
+}
 fn rci(a:Var,dim:Vec<i32>,init:&VarInit,b:&mut VStack)->Segment{
     match init{
         &VarInit::Nil => Segment::new(),
-        &VarInit::E(t) => Segment::from(t.cz(a,0,dim.as_slice(),b)),
-        &VarInit::I(t) => Segment::from(t.cz(a,0,dim.as_slice(),b))
+        &VarInit::E(ref t) => Segment::from(t.cz(a,0,dim.as_slice(),b)),
+        &VarInit::I(ref t) => Segment::from(t.cz(a,0,dim.as_slice(),b))
     }
 }
 impl InitCont<i32>{
@@ -225,12 +252,12 @@ impl InitCont<Exp>{
         if dim.len() == 1{
             // one-dimension left that's a single value
             match self{
-                InitCont::Val(t) => AR(*t).cz(LVal::SymA(a,RVal::Int(off)), b),
+                InitCont::Val(t) => AR(t).cz(LVal::SymA(a,RVal::Int(off)), b),
                 InitCont::Vax(t) => panic!("dimension mismatch")
             }
         }else{
             match self{
-                InitCont::Val(t) => AR(*t).cz(LVal::SymA(a,RVal::Int(off)), b),
+                InitCont::Val(t) => AR(t).cz(LVal::SymA(a,RVal::Int(off)), b),
                 InitCont::Vax(t) => {
                     let da = dim[0];
                     let db = dim[1];
@@ -283,6 +310,21 @@ impl ast::Oper{
             &ast::Oper::Gt => Oper::Gt
         }
     }
+    fn is_co(&self) -> bool {
+        match self{
+            &ast::Oper::Add => false,
+            &ast::Oper::Sub => false,
+            &ast::Oper::Mul => false,
+            &ast::Oper::Div => false,
+            &ast::Oper::Mod => false,
+            &ast::Oper::Lt => true,
+            &ast::Oper::Le => true,
+            &ast::Oper::Eq => true,
+            &ast::Oper::Ne => true,
+            &ast::Oper::Ge => true,
+            &ast::Oper::Gt => true
+        }
+    }
 }
 impl LVal{
     fn get_ref(&self, b:&mut VStack) -> Var{
@@ -323,37 +365,33 @@ impl Expr{
         match self{
             &Expr::Nil => (VI::new(),RVal::Sym(av)),
             &Expr::Num(t) => (VI::from([Inst::Ass(LVal::Sym(av),RVal::Int(t))]),RVal::Sym(av)),
-            t =>{
-                match t{
-                    &Expr::FnCall(ref fnm,ref para) => {
-                        let mut para=para.iter().map(|x|{
-                            let par = b.top().reg_tmp();
-                            let z=x.cz(LVal::Sym(par),b);
-                            z.push_back(Inst::Param(RVal::Sym(par)));
-                            z
-                        }).reduce(mdq).unwrap_or_else(|| VI::new());
-                        para.push_back(Inst::CallFn(av,FnName(fnm.to_string())));
-                        (para,rav)
-                    },
-                    &Expr::LVal(ref c) => c.cv(Some(av),b),
-                    &Expr::Op(ref u,o,ref v) => {
-                        let (uu,su) = u.cv(None,b);
-                        let (vv,sv) = v.cv(None,b);
-                        let mut cs = mdq(uu,vv);
-                        cs.push_back(Inst::Cpt(av,su,o.to_ee(),sv));
-                        (cs,rav)
-                    },
-                    &Expr::UOp(o,ref v) =>{
-                        let (mut vv,sv) = v.cv(None,b);
-                        let z = match o{
-                            ast::UOper::Pos => return (vv,sv),
-                            ast::UOper::Neg => UOper::Neg,
-                            ast::UOper::Not => UOper::Not
-                        };
-                        vv.push_back(Inst::UCpt(av,z,sv));
-                        (vv,rav)
-                    }
-                }
+            &Expr::FnCall(ref fnm,ref para) => {
+                let mut para=para.iter().map(|x|{
+                    let par = b.top().reg_tmp();
+                    let mut z=x.cz(LVal::Sym(par),b);
+                    z.push_back(Inst::Param(RVal::Sym(par)));
+                    z
+                }).reduce(mdq).unwrap_or_else(|| VI::new());
+                para.push_back(Inst::CallFn(av,FnName(fnm.to_string())));
+                (para,rav)
+            },
+            &Expr::LVal(ref c) => c.cv(Some(av),b),
+            &Expr::Op(ref u,o,ref v) => {
+                let (uu,su) = u.cv(None,b);
+                let (vv,sv) = v.cv(None,b);
+                let mut cs = mdq(uu,vv);
+                cs.push_back(Inst::Cpt(av,su,o.to_ee(),sv));
+                (cs,rav)
+            },
+            &Expr::UOp(o,ref v) =>{
+                let (mut vv,sv) = v.cv(None,b);
+                let z = match o{
+                    ast::UOper::Pos => return (vv,sv),
+                    ast::UOper::Neg => UOper::Neg,
+                    ast::UOper::Not => UOper::Not
+                };
+                vv.push_back(Inst::UCpt(av,z,sv));
+                (vv,rav)
             }
         }
     }
@@ -449,7 +487,7 @@ impl ast::LVal{
         // ast::LVal into inst::RVal cast
         // if a = None, then returns orig if a is int, otherwise a+ind / a[ind] depend on 
         // if a = Some(var), then var = lval and returns var
-        let (v,l,t) = self.cl(a,b);
+        let (mut v,l,t) = self.cl(a,b);
         match l{
             LVal::Sym(t) => (v,RVal::Sym(t)),
             LVal::SymA(vr,off) => {
@@ -472,9 +510,9 @@ impl Comp for Func{
     fn cc(&self,b:&mut VStack) -> Segment{
         b.enter();
         self.param.iter().for_each(|f| f.rg(b));
-        let body = vcc(&self.body,b);
+        let mut body = vcc(&self.body,b);
         let r = b.exit();
-        let vdefs = r.dump();
+        let mut vdefs = r.dump();
         let fnn = FnName(self.name.to_string());
         vdefs.push_front(Inst::Fn(fnn.clone(),self.param.len() as i32));
         body.ins.push_back(Inst::FnE(fnn));
@@ -483,6 +521,105 @@ impl Comp for Func{
 }
 impl Comp for BlockItem{
     fn cc(&self,b:&mut VStack) -> Segment{
-        
+        match self{
+            &BlockItem::Decl(ref t) => t.cc(b),
+            &BlockItem::Stmt(ref t) => t.cc(b)
+        }
+    }
+}
+impl Comp for Stmt{
+    fn cc(&self,b:&mut VStack) -> Segment{
+        match self{
+            &Stmt::Assign(ref l,ref e) => {
+                let (mut il,lv,cm) = l.cl(None,b);
+                if !cm {panic!("Trying to assign value into a partially evaluated type")}
+                let qv = lv.get_ref(b);
+                let (mut ins,qb) = e.cv(Some(qv),b);
+                lv.store(qv, &mut ins);
+                Segment::from(mdq(il,ins))
+            },
+            &Stmt::Expr(ref e) => Segment::from(e.cv(None,b).0),
+            &Stmt::Block(ref e) => {
+                b.enter();
+                let mut body = vcc(e,b);
+                let r = b.exit();
+                let mut vdefs = r.dump();
+                Segment::cat(Segment::from(vdefs), body)
+            },
+            &Stmt::If(ref c,ref l,ref r) => {
+                let mut cs:Segment = c.cc(b);
+                let (mut ls,tlab) = l.cc(b).lab(b);
+                let qlab = b.get_lab();
+                let (rs,flab) = match r{
+                    None => (Segment::new().plab(qlab),qlab),
+                    Some(t) => {
+                        let (u,v) =t.cc(b).lab(b);
+                        (u.plab(qlab),v)
+                    }
+                };
+                cs=cs.fill(0, tlab);
+                cs=cs.fill(1,flab);
+                if let None = r {} else {ls=ls.jump(qlab);}
+                Segment::cat(Segment::cat(cs,ls),rs)
+            },
+            &Stmt::While(ref c,ref s) => {
+                let (mut cs, cl) :(Segment,i32)= c.cc(b).lab(b);
+                let (mut ss ,sl)= s.cc(b).lab(b);
+                let q=b.get_lab();
+                ss=ss.jump(cl);
+                ss=ss.plab(q);
+                cs=cs.fill(0,sl);
+                cs=cs.fill(1,q);
+                ss=ss.fill(2,q);
+                ss=ss.fill(3,cl);
+                Segment::cat(cs,ss)
+            },
+            &Stmt::Break => Segment::new().jumpx(Inst::Jump(-1), 2),
+            &Stmt::Continue => Segment::new().jumpx(Inst::Jump(-1),3),
+            &Stmt::Ret(ref r) => {
+                if r.is_n() { Segment::from(VI::from([Inst::Ret])) }
+                else {
+                    let (mut i,c) = r.cv(None, b);
+                    i.push_back(Inst::Return(c));
+                    Segment::from(i)
+                }
+            }
+        }
+    }
+}
+impl Expr{
+    fn cn(&self,b:&mut VStack) -> Segment{
+        match self{
+            &Expr::Op(ref u,o,ref v) => {
+                if o.is_co() {
+                    let (ls,l) = u.cv(None,b);
+                    let (rs,r) = v.cv(None,b);
+                    let mut zs = Segment::from(mdq(ls,rs));
+                    zs = zs.jumpx(Inst::Brch(l,o.to_ee(),r,-1),0);
+                    return zs.jumpx(Inst::Jump(-1),1);
+                }
+            }, _ => {}
+        }
+        let (zs,q) = self.cv(None,b);
+        let mut zs = Segment::from(zs);
+        zs = zs.jumpx(Inst::Brch(RVal::Int(0),Oper::Ne,q,-1),0);
+        zs.jumpx(Inst::Jump(-1),1)
+    }
+}
+impl Comp for CondExpr{
+    fn cc(&self,b:&mut VStack) -> Segment{
+        match self{
+            &CondExpr::Comp(ref t) => t.cn(b),
+            &CondExpr::And(ref l, ref r) =>{
+                let ls = l.cc(b);
+                let (rs,r) = r.cc(b).lab(b);
+                Segment::cat(ls.fill(0,r),rs)
+            },
+            &CondExpr::Or(ref l,ref r) => {
+                let ls = l.cc(b);
+                let (rs,r) = r.cc(b).lab(b);
+                Segment::cat(ls.fill(1,r),rs)
+            }
+        }
     }
 }
