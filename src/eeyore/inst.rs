@@ -36,7 +36,7 @@ pub enum Oper{
     #[display(fmt="||")]
     Or
 }
-#[derive(Display,Copy,Clone)]
+#[derive(Display,Copy,Clone,PartialEq)]
 pub enum VarUsage{
     #[display(fmt="T")]
     Var,
@@ -45,17 +45,17 @@ pub enum VarUsage{
     #[display(fmt="p")]
     Param
 }
-#[derive(Display,Copy,Clone)]
+#[derive(Display,Copy,Clone,PartialEq)]
 #[display(fmt="{}{}",_0,_1)]
 pub struct Var(pub VarUsage,pub i32);
-#[derive(Display,Copy,Clone)]
+#[derive(Display,Copy,Clone,PartialEq)]
 pub enum LVal{
     #[display(fmt="{}",_0)]
     Sym(Var),
     #[display(fmt="{}[{}]",_0,_1)]
     SymA(Var,RVal),
 }
-#[derive(Display,Copy,Clone)]
+#[derive(Display,Copy,Clone,PartialEq)]
 pub enum RVal{
     #[display(fmt="{}",_0)]
     Sym(Var),

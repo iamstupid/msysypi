@@ -266,13 +266,13 @@ fn ifpush<T>(q:Option<Vec<T>>,p:Option<T>)->Option<Vec<T>>{
         (Some(mut t),Some(p)) => {t.push(p); Some(t)}
     }
 }
-fn incast(t:&Vec<Exp>)->Option<Vec<i32>>{
+pub fn incast(t:&Vec<Exp>)->Option<Vec<i32>>{
     t.iter().fold(Some(Vec::new()),|v,x| ifpush(v,x.eval()))
 }
-fn vicast(t:&Vec<Exp>)->Vec<i32>{
+pub fn vicast(t:&Vec<Exp>)->Vec<i32>{
     t.iter().map(|x| x.eval().unwrap()).collect()
 }
-fn dicast(t:&Vec<Exp>)->Vec<i32>{
+pub fn dicast(t:&Vec<Exp>)->Vec<i32>{
     // dimension cast where Expr::Nil is evaluated into -1
     t.iter().map(|x| match x.eval(){Some(t)=>t,None=>-1}).collect()
 }
