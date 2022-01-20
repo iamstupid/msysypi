@@ -27,7 +27,8 @@ struct VScope{
     map:HashMap<String,Vmeta>,
     local:i32,
     temp:i32,
-    param:i32
+    param:i32,
+    retired:VecDeque<Inst>
 }
 struct VStack{
     st:Vec<VScope>,
@@ -35,7 +36,7 @@ struct VStack{
 }
 impl VScope{
     fn new(fcnt:i32)->VScope{
-        VScope{map:HashMap::new(),local:fcnt,temp:0,param:0}
+        VScope{map:HashMap::new(),local:fcnt,temp:0,param:0,retired:VI::new()}
     }
     fn reg_loc(&mut self,n:&str,d:&Vec<i32>)->Var{
         let id = self.local;
@@ -62,7 +63,15 @@ impl VScope{
     fn dump(&self) -> VI{
         let loc = VecDeque::from_iter(self.map.iter().filter_map(|(k,v)| v.dump()));
         let tmp = VecDeque::from_iter((0..self.temp).map(|x| Inst::DI(Var(VarUsage::Temp,x))));
-        mdq(loc,tmp)
+        mdq(mdq(loc,tmp),self.retired.clone())
+    }
+    fn retire(mut self) -> (Self,VI) {
+        let t = mdq(VecDeque::from_iter(self.map.iter().filter_map(|(k,v)| v.dump())), self.retired);
+        self.retired = VI::new();
+        (self,t)
+    }
+    fn possess(&mut self, ret: VI){
+        self.retired = mdq(self.retired.clone(),ret);
     }
 }
 impl VStack{
@@ -75,11 +84,21 @@ impl VStack{
         r
     }
     fn enter(&mut self){
-        let r = self.st.iter().rev().next().unwrap().local;
+        let r = self.top().local;
+        let c = self.top().temp;
         self.st.push(VScope::new(r));
+        self.top().temp = c;
     }
     fn exit(&mut self)->VScope{
-        self.st.pop().unwrap()
+        let rq = self.st.pop().unwrap();
+        if self.st.len() > 1{
+            self.top().local=rq.local;
+            self.top().temp =rq.temp;
+            let (rq,rt) = rq.retire();
+            self.top().possess(rt);
+            return rq;
+        }
+        rq
     }
     fn find(&self, name:&String)->Option<Vmeta>{
         self.st.iter().rev().find_map(|t| t.map.get(name)).map(|f| f.clone())
@@ -591,7 +610,12 @@ impl Comp for Stmt{
             &Stmt::Expr(ref e) => {
                 Segment::from(e.rcv(None,b).0)
             },
-            &Stmt::Block(ref e) => vcc(e,b),
+            &Stmt::Block(ref e) => {
+                b.enter();
+                let z = vcc(e,b);
+                let q = b.exit();
+                z
+            },
             &Stmt::If(ref c,ref l,ref r) => {
                 let mut cs:Segment = c.cc(b);
                 let (mut ls,tlab) = l.cc(b).lab(b);
