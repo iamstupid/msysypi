@@ -91,8 +91,8 @@ impl VStack{
     }
     fn exit(&mut self)->VScope{
         let rq = self.st.pop().unwrap();
+        if self.st.len() > 0 {self.top().local=rq.local;}
         if self.st.len() > 1{
-            self.top().local=rq.local;
             self.top().temp =rq.temp;
             let (rq,rt) = rq.retire();
             self.top().possess(rt);
@@ -255,7 +255,16 @@ impl InitCont<i32>{
                     let db = dim[1];
                     let mut ptr = 0;
                     let mut vx=VI::new();
-                    let ps = |t:i32| if t%db==0 {t} else {(t+db)%db};
+                    let ps = |vx:&mut VI,mut t:i32|{
+                        if t%db==0 {t} else {
+                            let r = (t+db)%db;
+                            while t < r{
+                                vx.push_back(Inst::Ass(LVal::SymA(a,RVal::Int(off+t*4)),RVal::Int(0)));
+                                t+=1;
+                            }
+                            r
+                        }
+                    };
                     for i in t.iter(){
                         match i.as_ref(){
                             &InitCont::Val(_) => {
@@ -263,11 +272,15 @@ impl InitCont<i32>{
                                 ptr+=1;
                             },
                             &InitCont::Vax(_) => {
-                                ptr = ps(ptr);
+                                ptr = ps(&mut vx,ptr);
                                 vx=mdq(vx,i.cz(a,off+ptr*4,&dim[1..],b));
                                 ptr += db;
                             }
                         }
+                    }
+                    while ptr < da{
+                        vx.push_back(Inst::Ass(LVal::SymA(a,RVal::Int(off+ptr*4)),RVal::Int(0)));
+                        ptr+=1;
                     }
                     vx
                 }
@@ -299,7 +312,16 @@ impl InitCont<Exp>{
                     let db = dim[1];
                     let mut ptr = 0;
                     let mut vx=VI::new();
-                    let ps = |t:i32| if t%db==0 {t} else {(t+db)%db};
+                    let ps = |vx:&mut VI,mut t:i32|{
+                        if t%db==0 {t} else {
+                            let r = (t+db)%db;
+                            while t < r{
+                                vx.push_back(Inst::Ass(LVal::SymA(a,RVal::Int(off+t*4)),RVal::Int(0)));
+                                t+=1;
+                            }
+                            r
+                        }
+                    };
                     for i in t.iter(){
                         match i.as_ref(){
                             &InitCont::Val(_) => {
@@ -307,11 +329,15 @@ impl InitCont<Exp>{
                                 ptr+=1;
                             },
                             &InitCont::Vax(_) => {
-                                ptr = ps(ptr);
+                                ptr = ps(&mut vx,ptr);
                                 vx=mdq(vx,i.cz(a,off+ptr*4,&dim[1..],b));
                                 ptr += db;
                             }
                         }
+                    }
+                    while ptr < da{
+                        vx.push_back(Inst::Ass(LVal::SymA(a,RVal::Int(off+ptr*4)),RVal::Int(0)));
+                        ptr+=1;
                     }
                     vx
                 }
