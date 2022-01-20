@@ -12,7 +12,8 @@
                 "args": [
                     "build",
                     "--bin=msysypi",
-                    "--package=msysypi"
+                    "--package=msysypi",
+                    "--release"
                 ],
                 "filter": {
                     "name": "msysypi",

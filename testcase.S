@@ -1,10 +1,10 @@
-	var 80 T5
 	var 800 T3
 	var 52907904 T2
 	var T0
 	var T1
+	var 80 T5
 	T0 = 18
-	T1 = 1000000007
+	T1 = -2147483648
 f_equal [2]
 	if p0 == p1 goto l0
 	goto l1
@@ -155,7 +155,7 @@ l6:
 	t32 = call f_dfs
 	t29 = t30 * t32
 	t28 = T4 + t29
-	T4 = t28 % 1000000007
+	T4 = t28 % -2147483648
 l7:
 	if 0 != p1 goto l8
 	goto l9
@@ -175,7 +175,7 @@ l8:
 	t38 = call f_dfs
 	t35 = t36 * t38
 	t34 = T4 + t35
-	T4 = t34 % 1000000007
+	T4 = t34 % -2147483648
 l9:
 	if 0 != p2 goto l10
 	goto l11
@@ -195,7 +195,7 @@ l10:
 	t45 = call f_dfs
 	t42 = t43 * t45
 	t41 = T4 + t42
-	T4 = t41 % 1000000007
+	T4 = t41 % -2147483648
 l11:
 	if 0 != p3 goto l12
 	goto l13
@@ -215,7 +215,7 @@ l12:
 	t52 = call f_dfs
 	t49 = t50 * t52
 	t48 = T4 + t49
-	T4 = t48 % 1000000007
+	T4 = t48 % -2147483648
 l13:
 	if 0 != p4 goto l14
 	goto l15
@@ -231,7 +231,7 @@ l14:
 	t57 = call f_dfs
 	t56 = p4 * t57
 	t55 = T4 + t56
-	T4 = t55 % 1000000007
+	T4 = t55 % -2147483648
 l15:
 	t60 = p5 * 4
 	t61 = p4 * 28
@@ -244,7 +244,7 @@ l15:
 	t68 = t67 + t66
 	t69 = p0 * 2939328
 	t70 = t69 + t68
-	t71 = T4 % 1000000007
+	t71 = T4 % -2147483648
 	T2[t70] = t71
 	t73 = p5 * 4
 	t74 = p4 * 28
@@ -261,9 +261,9 @@ l15:
 	return t72
 end f_dfs
 f_main [0]
-	var T7
 	var T13
 	var T6
+	var T7
 	var t0
 	var t1
 	var t2

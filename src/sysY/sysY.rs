@@ -1,5 +1,5 @@
 // auto-generated: "lalrpop 0.19.6"
-// sha3: 4bc0fdc1334d6bde3b9e555398e4588bd9a81fe851b4e8268b45a77af3cb70
+// sha3: 3828cc15448ae6b8e4d2d76fa5ce9b3bb5c8941659c5ce775b9973bed766ada
 use crate::sysY::ast::{CompUnit,DeclType,FunctType,UOper,Oper,VarDecls,Decl,VarDecl,Exp,Con,VarInit,InitCont,ExprInit,Func,BlockItem,Block,Stmt,LVal,Expr,CondExpr};
 #[allow(unused_extern_crates)]
 extern crate lalrpop_util as __lalrpop_util;
@@ -5690,7 +5690,7 @@ fn __action67<
     (_, __0, _): (usize, &'input str, usize),
 ) -> i32
 {
-    i32::from_str_radix(&__0[2..],16).unwrap()
+    i64::from_str_radix(&__0[2..],16).unwrap() as i32
 }
 
 #[allow(unused_variables)]
@@ -5701,7 +5701,7 @@ fn __action68<
     (_, __0, _): (usize, &'input str, usize),
 ) -> i32
 {
-    i32::from_str_radix(&__0,8).unwrap()
+    i64::from_str_radix(&__0,8).unwrap() as i32
 }
 
 #[allow(unused_variables)]
@@ -5712,7 +5712,7 @@ fn __action69<
     (_, __0, _): (usize, &'input str, usize),
 ) -> i32
 {
-    i32::from_str_radix(__0,10).unwrap()
+    i64::from_str_radix(__0,10).unwrap() as i32
 }
 
 #[allow(unused_variables)]

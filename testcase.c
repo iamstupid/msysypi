@@ -1,5 +1,5 @@
 const int maxn = 18;
-const int mod = 1000000007;
+const int mod = -2147483648;
 int dp[maxn][maxn][maxn][maxn][maxn][7];
 int list[200];
 
