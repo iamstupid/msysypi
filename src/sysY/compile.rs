@@ -366,6 +366,25 @@ impl RVal{
     }
 }
 impl Expr{
+    fn rcv(&self, a:Option<Var>, b:&mut VStack) -> (VI, Option<RVal>) {
+        if let None = a{
+            match self{
+                &Expr::Nil => return (VI::new(),None),
+                &Expr::FnCall(ref fnm,ref para) => {
+                    let mut para=para.iter().map(|x|{
+                        let (mut z,r)=x.cv(None,b);
+                        z.push_back(Inst::Param(r));
+                        z
+                    }).reduce(mdq).unwrap_or_else(|| VI::new());
+                    para.push_back(Inst::Call(FnName(fnm.to_string())));
+                    return (para,None)
+                },
+                _ => {}
+            }
+        }
+        let (a,b) = self.cv(a,b);
+        (a,Some(b))
+    }
     // cv means compile self into VI while the return value is stored in RVal
     // if a storage variable is provided as Some(var) then the return value must be
     // RVal::Sym(var)
@@ -569,7 +588,9 @@ impl Comp for Stmt{
                 lv.store(qv, &mut ins);
                 Segment::from(mdq(il,ins))
             },
-            &Stmt::Expr(ref e) => Segment::from(e.cv(None,b).0),
+            &Stmt::Expr(ref e) => {
+                Segment::from(e.rcv(None,b).0)
+            },
             &Stmt::Block(ref e) => vcc(e,b),
             &Stmt::If(ref c,ref l,ref r) => {
                 let mut cs:Segment = c.cc(b);
