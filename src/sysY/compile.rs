@@ -455,11 +455,13 @@ impl Expr{
             &Expr::Nil => (VI::new(),RVal::Sym(av)),
             &Expr::Num(t) => (VI::from([Inst::Ass(LVal::Sym(av),RVal::Int(t))]),RVal::Sym(av)),
             &Expr::FnCall(ref fnm,ref para) => {
+                let mut rz = VI::new();
                 let mut para=para.iter().map(|x|{
                     let (mut z,r)=x.cv(None,b);
-                    z.push_back(Inst::Param(r));
+                    rz.push_back(Inst::Param(r));
                     z
                 }).reduce(mdq).unwrap_or_else(|| VI::new());
+                para = mdq(para,rz);
                 para.push_back(Inst::CallFn(av,FnName(fnm.to_string())));
                 (para,rav)
             },
