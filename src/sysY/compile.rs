@@ -75,7 +75,7 @@ impl VStack{
         r
     }
     fn enter(&mut self){
-        let r = self.st.iter().rev().next().unwrap().local + 1;
+        let r = self.st.iter().rev().next().unwrap().local;
         self.st.push(VScope::new(r));
     }
     fn exit(&mut self)->VScope{
@@ -658,6 +658,6 @@ pub fn compile(a:Vec<Box<CompUnit>>) -> Segment {
 }
 impl Segment{
     pub fn print(&self)->String{
-        Vec::from_iter(self.ins.iter().map(|f| f.to_string())).join("\n")
+        Vec::from_iter(self.ins.iter().map(|f| f.to_string())).join("\n") + "\n"
     }
 }

@@ -126,7 +126,6 @@ impl VScope{
         self.stack.pop();
     }
     pub fn register(&mut self,name:&String,val:VR,dim:usize){
-        println!("Register {} as {}",name,val.to_vi());
         let r = self.stack.len() - 1;
         self.stack[r].insert(name.to_string(), bo((val,dim)));
     }
