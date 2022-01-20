@@ -4,7 +4,7 @@ use crate::eeyore::inst::*;
 use crate::sysY::eval::{dicast,Prep};
 use crate::sysY::eval;
 
-use super::{ast::{CompUnit, Decl, VarDecl, InitCont, VarInit, Expr, Exp, Func, BlockItem, Stmt, CondExpr}, eval::bmult};
+use super::{ast::{CompUnit, Decl, VarDecl, InitCont, VarInit, Expr, Exp, Func, BlockItem, Stmt, CondExpr, FunctType}, eval::bmult};
 use super::ast;
 #[derive(Clone)]
 struct Vmeta{
@@ -584,6 +584,7 @@ impl Comp for Func{
         let mut vdefs = r.dump();
         let fnn = FnName(self.name.to_string());
         vdefs.push_front(Inst::Fn(fnn.clone(),self.param.len() as i32));
+        if(self.ret == FunctType::Void) {body.ins.push_back(Inst::Ret);}
         body.ins.push_back(Inst::FnE(fnn));
         Segment::from(mdq(vdefs,body.ins))
     }

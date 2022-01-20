@@ -1,7 +1,7 @@
 	var 48 T0
 f_main [0]
-	var T1
 	var T2
+	var T1
 	var t0
 	var t1
 	var t2
