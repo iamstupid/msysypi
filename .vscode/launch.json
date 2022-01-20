@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": "-f test.eey -m eeyore",
+            "args": "-S -e testcase.c -o testcase.S",
             "cwd": "${workspaceFolder}"
         },
         {

@@ -171,7 +171,6 @@ impl Expr{
     fn is_evaluated(&self)->bool{ match *self{Expr::Num(_)=>true,Expr::Nil=>true,_=>false}}
 }
 fn ExprOp(l:Expr,o:Oper,r:Expr)->Expr{
-    println!("Compute {} {} {}",l,o,r);
     if let Expr::Num(u) = l{
         if let Expr::Num(v) = r{
             return Expr::Num(op(o,u,v));

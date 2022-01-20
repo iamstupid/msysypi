@@ -1,7 +1,8 @@
 use std::{collections::{HashMap, VecDeque}};
 
 use crate::eeyore::inst::*;
-use crate::sysY::eval::{dicast};
+use crate::sysY::eval::{dicast,Prep};
+use crate::sysY::eval;
 
 use super::{ast::{CompUnit, Decl, VarDecl, InitCont, VarInit, Expr, Exp, Func, BlockItem, Stmt, CondExpr}, eval::bmult};
 use super::ast;
@@ -85,7 +86,7 @@ impl VStack{
     }
     fn top(&mut self)->&mut VScope{ self.st.iter_mut().rev().next().unwrap() }
 }
-struct Segment{
+pub struct Segment{
     ins: VecDeque<Inst>,
     list: Vec<Vec<i32>>,
     ret: Option<RVal>
@@ -207,11 +208,19 @@ impl VCpl for AR<&ast::Exp>{
 fn rci(a:Var,dim:Vec<i32>,init:&VarInit,b:&mut VStack)->Segment{
     match init{
         &VarInit::Nil => Segment::new(),
-        &VarInit::E(ref t) => Segment::from(t.cz(a,0,dim.as_slice(),b)),
-        &VarInit::I(ref t) => Segment::from(t.cz(a,0,dim.as_slice(),b))
+        &VarInit::E(ref t) => Segment::from(t.rcz(a,0,dim.as_slice(),b)),
+        &VarInit::I(ref t) => Segment::from(t.rcz(a,0,dim.as_slice(),b))
     }
 }
 impl InitCont<i32>{
+    fn rcz(&self, a: Var, off: i32, dim:&[i32], b:&mut VStack)->VI{
+        if dim.len() == 1{
+            match self{
+                InitCont::Val(t) => AR(*t).cz(LVal::Sym(a), b),
+                InitCont::Vax(t) => panic!("dimension mismatch")
+            }
+        }else{self.cz(a,off,dim,b)}
+    }
     fn cz(&self, a: Var, off: i32, dim:&[i32], b:&mut VStack)->VI{
         if dim.len() == 1{
             // one-dimension left that's a single value
@@ -248,6 +257,14 @@ impl InitCont<i32>{
     }
 }
 impl InitCont<Exp>{
+    fn rcz(&self, a: Var, off: i32, dim:&[i32], b:&mut VStack)->VI{
+        if dim.len() == 1{
+            match self{
+                InitCont::Val(t) => AR(t).cz(LVal::Sym(a), b),
+                InitCont::Vax(t) => panic!("dimension mismatch")
+            }
+        }else{self.cz(a,off,dim,b)}
+    }
     fn cz(&self, a: Var, off: i32, dim:&[i32], b:&mut VStack)->VI{
         if dim.len() == 1{
             // one-dimension left that's a single value
@@ -357,6 +374,14 @@ impl Expr{
             match self{
                 &Expr::Nil => return (VI::new(),RVal::Int(0)),
                 &Expr::Num(t) => return (VI::new(),RVal::Int(t)),
+                &Expr::LVal(ref a) => {
+                    if a.ind.len() == 0 {
+                        let me = b.find(&a.name);
+                        if let Some(c) = me{
+                            return (VI::new(),RVal::Sym(c.vdef))
+                        }
+                    }
+                },
                 _ => {}
             }
         }
@@ -367,9 +392,8 @@ impl Expr{
             &Expr::Num(t) => (VI::from([Inst::Ass(LVal::Sym(av),RVal::Int(t))]),RVal::Sym(av)),
             &Expr::FnCall(ref fnm,ref para) => {
                 let mut para=para.iter().map(|x|{
-                    let par = b.top().reg_tmp();
-                    let mut z=x.cz(LVal::Sym(par),b);
-                    z.push_back(Inst::Param(RVal::Sym(par)));
+                    let (mut z,r)=x.cv(None,b);
+                    z.push_back(Inst::Param(r));
                     z
                 }).reduce(mdq).unwrap_or_else(|| VI::new());
                 para.push_back(Inst::CallFn(av,FnName(fnm.to_string())));
@@ -424,12 +448,19 @@ fn cvind(a:Var,dim:&[i32],ind:&[ast::Exp],b:&mut VStack) -> (VI, LVal){
         let mult = dim[0]*4;
         let (ov,or) = ind[0].cv(None,b);
         if let LVal::SymA(ra,rb) = r{
-            let c = b.top().reg_tmp();
-            let d = b.top().reg_tmp();
-            v=mdq(v,ov);
-            oper(&mut v,c,or,Oper::Mul,RVal::Int(mult));
-            oper(&mut v,d,RVal::Sym(c),Oper::Add,rb);
-            (v,LVal::SymA(ra,RVal::Sym(d)))
+            if RVal::Int(0) == rb{
+                let c = b.top().reg_tmp();
+                v=mdq(v,ov);
+                oper(&mut v,c,or,Oper::Mul,RVal::Int(mult));
+                (v,LVal::SymA(ra,RVal::Sym(c)))
+            }else{
+                let c = b.top().reg_tmp();
+                let d = b.top().reg_tmp();
+                v=mdq(v,ov);
+                oper(&mut v,c,or,Oper::Mul,RVal::Int(mult));
+                oper(&mut v,d,RVal::Sym(c),Oper::Add,rb);
+                (v,LVal::SymA(ra,RVal::Sym(d)))
+            }
         }else {panic!("Impossiblu");}
     }
 }
@@ -438,7 +469,7 @@ fn cvi(a:Var, dim: &Vec<i32>, ind: &Vec<ast::Exp>, b: &mut VStack) -> (VI, LVal)
     // else, return an array offset
     // for the caller, if |dim| = |ind|+1 then the index should be accessed with a[ind]
     // otherwise a + ind
-    if dim.len() == 0 { return (VI::new(),LVal::Sym(a));}
+    if dim.len() == 1 { return (VI::new(),LVal::Sym(a));}
     cvind(a,&dim[1..], ind.as_slice(), b)
 }
 impl ast::LVal{
@@ -539,13 +570,7 @@ impl Comp for Stmt{
                 Segment::from(mdq(il,ins))
             },
             &Stmt::Expr(ref e) => Segment::from(e.cv(None,b).0),
-            &Stmt::Block(ref e) => {
-                b.enter();
-                let mut body = vcc(e,b);
-                let r = b.exit();
-                let mut vdefs = r.dump();
-                Segment::cat(Segment::from(vdefs), body)
-            },
+            &Stmt::Block(ref e) => vcc(e,b),
             &Stmt::If(ref c,ref l,ref r) => {
                 let mut cs:Segment = c.cc(b);
                 let (mut ls,tlab) = l.cc(b).lab(b);
@@ -621,5 +646,18 @@ impl Comp for CondExpr{
                 Segment::cat(ls.fill(1,r),rs)
             }
         }
+    }
+}
+pub fn compile(a:Vec<Box<CompUnit>>) -> Segment {
+    let mut scope = eval::VScope::new();
+    let mut b = VStack::new();
+    let a = eval::vprep(a, &mut scope);
+    let rseg = a.into_iter().map(|x| x.cc(&mut b)).reduce(Segment::cat).unwrap_or_else(|| Segment::new());
+    let cc = b.exit().dump();
+    Segment::cat(Segment::from(cc),rseg)
+}
+impl Segment{
+    pub fn print(&self)->String{
+        Vec::from_iter(self.ins.iter().map(|f| f.to_string())).join("\n")
     }
 }
