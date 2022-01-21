@@ -251,10 +251,17 @@ impl Inst{
             Jm(a) => format!("j .l{}\n",a),
             Lb(a) => format!(".l{}:\n",a),
             Cl(a) => format!("call {}\n",sfn(a)),
-            Rt => 
+            Rt => if is_int12(stk) {
 format!("lw ra, {stk2}(sp)
 addi sp, sp, {stk1}
-ret\n",stk1=stk,stk2=stk-4),
+ret\n",stk1=stk,stk2=stk-4)}else{
+format!("
+li s0,{stk}
+add sp,sp,s0
+lw ra, -4(sp)
+ret
+",stk=stk)
+},
             Sst(a,b) => sw("sp",b*4,sreg(a)),
             Sld(a,b) => lw(sreg(b),"sp",a*4),
             Vld(a,b) => format!("lui {},%hi(v{})\nlw {},%lo(v{})({})\n",sreg(b),a,sreg(b),a,sreg(b)),
@@ -304,6 +311,7 @@ impl Fn{
         let func = sfn(self.name);
         let stk = (self.sta/4+1)*16;
         let code = self.inst.iter().map(|x| x.tr(stk)).collect::<Vec<String>>().concat();
+        if is_int12(stk){
         format!(
 "   .text
     .align 2
@@ -314,5 +322,18 @@ impl Fn{
     sw ra,{stk2}(sp)
 {code}
     .size {func},.-{func}\n",func=func,code=code,stk1=-stk,stk2=stk-4)
-    }
+}else{
+    format!(
+"   .text
+.align 2
+.global {func}
+.type {func}, @function
+{func}:
+sw ra,-4(sp)
+li s0, {stk1}
+add sp, sp, s0
+{code}
+.size {func},.-{func}\n",func=func,code=code,stk1=-stk)
+}
+}
 }
