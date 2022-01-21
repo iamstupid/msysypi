@@ -39,7 +39,6 @@ fn main() {
         // not implemented
     }else{
         let inFile = fs::read_to_string(c.infile).expect("Fuck.");
-        let r = tigger::inst::Prog::parse(inFile);
-        fs::write(c.oufile, r.tr());
+        fs::write(c.oufile, tigger::inst::Prog::ass(inFile));
     }
 }

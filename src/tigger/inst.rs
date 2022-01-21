@@ -131,6 +131,40 @@ impl Prog{
         }
         Prog{vdef,fdef}
     }
+    pub fn ass(a:String) -> String{
+        let mut vdef = vec![];
+        let mut idef = vec![];
+        let mut inf : Option<(i32,i32,i32)> = None;
+        let fdp = tig::fdParser::new();
+        let inp = tig::insParser::new();
+        for i in a.lines(){
+            let c = i.split("//").next().unwrap().trim().to_string();
+            if c.len() == 0 { continue; }
+            match inf{
+                None => {
+                    match fdp.parse(c.as_str()){
+                        Err(t) => println!("{}",t),
+                        Ok(FD::F(i,j,k)) => {inf = Some((i,j,k));},
+                        Ok(FD::D(d)) => {vdef.push(d.tr());}
+                    }
+                },
+                Some((n,i,j)) => {
+                    match inp.parse(c.as_str()){
+                        Err(t) => println!("{}",t),
+                        Ok(Inst::Edf) => {
+                            let q=Fn{name:n,par:i,sta:j,inst:idef};
+                            vdef.push(q.tr());
+                            idef = vec![];
+                            inf = None;
+                        },
+                        Ok(i) => idef.push(i)
+                    }
+                }
+            }
+        }
+        vdef.concat()
+    }
+    
 }
 
 #[derive(Copy,Clone,PartialEq)]
