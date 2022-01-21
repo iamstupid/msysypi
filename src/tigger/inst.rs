@@ -175,7 +175,10 @@ fn popr(a:u8, u:u8, o:Oper, v:u8) -> String{
     else if b ==1 {
         format!("{} {},{},{}\nseqz {},{}\n",ao,sreg(a),sreg(u),sreg(v),sreg(a),sreg(a))
     }else {match o{
-        And => format!("snez {},{}\nsnez s0,{}\nand {},{},s0\n",sreg(a),sreg(u),sreg(v),sreg(a),sreg(a)),
+        And => format!(
+"snez {},{}
+snez s0,{}
+and {},{},s0\n",sreg(a),sreg(u),sreg(v),sreg(a),sreg(a)),
         Or => format!("or {},{},{}\nsnez {},{}\n",sreg(a),sreg(u),sreg(v),sreg(a),sreg(a)),
         Ne => format!("xor {},{},{}\nsnez {},{}\n",sreg(a),sreg(u),sreg(v),sreg(a),sreg(a)),
         _ => panic!("impossible branch")

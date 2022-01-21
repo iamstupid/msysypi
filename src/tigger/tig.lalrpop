@@ -4,7 +4,7 @@ use Inst::*;
 grammar;
 
 Num:i32 = r"(-)?[0-9]+" => <>.parse::<i32>().unwrap();
-FnM:i32 = r"f_[a-zA-Z0-9]*" => fnm(&<>[2..]);
+FnM:i32 = r"f_[a-zA-Z0-9_]*" => fnm(&<>[2..]);
 Reg:u8 = r"[xsta][0-9]{1,2}" => treg(<>);
 Var:i32 = r"v[0-9]+" => <>[1..].parse::<i32>().unwrap();
 Lab:i32 = r"l[0-9]+" => <>[1..].parse::<i32>().unwrap();

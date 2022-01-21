@@ -1,5 +1,5 @@
 // auto-generated: "lalrpop 0.19.6"
-// sha3: 649f26bec6f68605e26ff6eb0303428ba873e7b65db8351b89f7612949
+// sha3: 23fcf5cb4c57b7b39b81f46d76e29d118cb2ab760ba7f13b0f6dc171b9324
 use crate::tigger::inst::{Inst,FD,treg,fnm,VarD};
 use crate::eeyore::inst::{Oper,UOper};
 use Inst::*;
@@ -155,7 +155,7 @@ mod __parse__fd {
             r###""||""###,
             r###"r#"(-)?[0-9]+"#"###,
             r###"r#"[xsta][0-9]{1,2}"#"###,
-            r###"r#"f_[a-zA-Z0-9]*"#"###,
+            r###"r#"f_[a-zA-Z0-9_]*"#"###,
             r###"r#"l[0-9]+"#"###,
             r###"r#"v[0-9]+"#"###,
         ];
@@ -641,7 +641,7 @@ mod __parse__fd {
         _: core::marker::PhantomData<(&'input ())>,
     ) -> (usize, usize)
     {
-        // FnM = r#"f_[a-zA-Z0-9]*"# => ActionFn(3);
+        // FnM = r#"f_[a-zA-Z0-9_]*"# => ActionFn(3);
         let __sym0 = __pop_Variant0(__symbols);
         let __start = __sym0.0.clone();
         let __end = __sym0.2.clone();
@@ -1812,7 +1812,7 @@ mod __parse__ins {
             r###""||""###,
             r###"r#"(-)?[0-9]+"#"###,
             r###"r#"[xsta][0-9]{1,2}"#"###,
-            r###"r#"f_[a-zA-Z0-9]*"#"###,
+            r###"r#"f_[a-zA-Z0-9_]*"#"###,
             r###"r#"l[0-9]+"#"###,
             r###"r#"v[0-9]+"#"###,
         ];
@@ -2298,7 +2298,7 @@ mod __parse__ins {
         _: core::marker::PhantomData<(&'input ())>,
     ) -> (usize, usize)
     {
-        // FnM = r#"f_[a-zA-Z0-9]*"# => ActionFn(3);
+        // FnM = r#"f_[a-zA-Z0-9_]*"# => ActionFn(3);
         let __sym0 = __pop_Variant0(__symbols);
         let __start = __sym0.0.clone();
         let __end = __sym0.2.clone();
@@ -3096,7 +3096,7 @@ mod __intern_token {
         let __strs: &[(&str, bool)] = &[
             ("^((\\-)?[0-9]+)", false),
             ("^([as-tx][0-9]{1,2})", false),
-            ("^(f_[0-9A-Za-z]*)", false),
+            ("^(f_[0-9A-Z_a-z]*)", false),
             ("^(l[0-9]+)", false),
             ("^(v[0-9]+)", false),
             ("^(!)", false),

@@ -1,35 +1,59 @@
-v0 = 0
-v1 = malloc 40
+// BEGIN TIGGER
+//--- SCALAR DECL
+
+//--- ARRAY DECL
+
+//--- FUNCTIONS
+f_if_if_Else [0] [0]
+// DESTROYS: s4 a0
+
+//     {reg: a0}T0 = 5
+    a0 = 5
+
+//     {reg: s4}T1 = 10
+    s4 = 10
+
+//     if {reg: a0}T0 != 5 goto l0
+    t1 = 5
+    if a0 != t1 goto l0
+
+//     if {reg: s4}T1 != 10 goto l1
+    t1 = 10
+    if s4 != t1 goto l1
+
+//     {reg: a0}T0 = 25
+    a0 = 25
+
+//     l1:
+    l1:
+
+//     goto l2
+    goto l2
+
+//     l0:
+    l0:
+
+//     {reg: a0}T0 = {reg: a0}T0 + 15
+    a0 = a0 + 15
+
+//     l2:
+    l2:
+
+//     return {reg: a0}T0
+    a0 = a0
+    return
+end f_if_if_Else
 
 f_main [0] [0]
-  call f_getint
-  loadaddr v0 t0
-  t0[0] = a0
-  load v0 t0
-  t1 = 10
-  if t0 <= t1 goto l0
-  a0 = 1
-  return
-l0:
-  s0 = 0
-  s1 = s0
-l1:
-  load v0 t0
-  if s0 >= t0 goto l2
-  call f_getint
-  t0 = a0
-  t1 = 4
-  t2 = s0 * t1
-    loadaddr v1 t3
-    t3 = t3 + t2
-  t3[0] = t0
-  t4 = t3[0]
-  s1 = s1 + t4
-  s0 = s0 + 1
-  goto l1
-l2:
-  a0 = s1
-  call f_putint
-  a0 = 0
-  return
+// DESTROYS: a0 s4
+
+//     {reg: a0}t3 = call f_if_if_Else
+    call f_if_if_Else
+    a0 = a0
+
+//     return {reg: a0}t3
+    a0 = a0
+    return
 end f_main
+
+// END TIGGER
