@@ -6,10 +6,12 @@ use crate::eeyore::inst::{Oper,UOper};
 use super::tig;
 
 fn is_int12(i:i32) -> bool{
-    i>=-2048 && i<2048
+    // i>=-2048 && i<2048
+    false
 }
 fn is_int10(i:i32) -> bool{
-    i>=-512 && i<512
+    // i>=-512 && i<512
+    false
 }
 
 #[derive(Display,Copy,Clone,PartialEq)]
