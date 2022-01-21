@@ -1,0 +1,56 @@
+use crate::tigger::inst::{Inst,FD,treg,fnm,VarD};
+use crate::eeyore::inst::{Oper,UOper};
+use Inst::*;
+grammar;
+
+Num:i32 = r"(-)?[0-9]+" => <>.parse::<i32>().unwrap();
+FnM:i32 = r"f_[a-zA-Z0-9]*" => fnm(&<>[2..]);
+Reg:u8 = r"[xsta][0-9]{1,2}" => treg(<>);
+Var:i32 = r"v[0-9]+" => <>[1..].parse::<i32>().unwrap();
+Lab:i32 = r"l[0-9]+" => <>[1..].parse::<i32>().unwrap();
+Op:Oper = {
+    "*" => Oper::Mul,
+    "/" => Oper::Div,
+    "%" => Oper::Mod,
+    "+" => Oper::Add,
+    "-" => Oper::Sub,
+    "&&"=> Oper::And,
+    "||"=> Oper::Or
+};
+LOp:Oper = {
+    "<" => Oper::Lt,
+    ">" => Oper::Gt,
+    "<="=> Oper::Le,
+    ">="=> Oper::Ge,
+    "=="=> Oper::Eq,
+    "!="=> Oper::Ne
+};
+Bop = {Op, LOp};
+UOp:UOper = { "-" => UOper::Neg, "!" => UOper::Not };
+
+pub fd:FD = {
+    <FnM> "[" <Num> "]" "[" <Num> "]" => FD::F(<>),
+    <Var> "=" <Num> => FD::D(VarD::I(<>)),
+    <Var> "=" "malloc" <Num> => FD::D(VarD::A(<>))
+};
+
+pub ins:Inst = {
+    <Reg> "=" <Reg> <Bop> <Reg> => Op(<>),
+    <Reg> "=" <Reg> <Bop> <Num> => Oi(<>),
+    <Reg> "=" <UOp> <Reg> => Ou(<>),
+    <Reg> "=" <Reg> => Ts(<>),
+    <Reg> "=" <Num> => Li(<>),
+    <Reg> "[" <Num> "]" "=" <Reg> => St(<>),
+    <Reg> "=" <Reg> "[" <Num> "]" => Ld(<>),
+    "if" <Reg> <LOp> <Reg> "goto" <Lab> => Cj(<>),
+    "goto" <Lab> => Jm(<>),
+    <Lab> ":" => Lb(<>),
+    "call" <FnM> => Cl(<>),
+    "return" => Rt,
+    "store" <Reg> <Num> => Sst(<>),
+    "load" <Num> <Reg> => Sld(<>),
+    "load" <Var> <Reg> => Vld(<>),
+    "loadaddr" <Num> <Reg> => Sla(<>),
+    "loadaddr" <Var> <Reg> => Vla(<>),
+    "end" FnM => Edf
+}

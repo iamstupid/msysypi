@@ -10,6 +10,7 @@ clap = { version = "3.0.7", features = ["derive"] }
 derive_more = "0.99.17"
 lalrpop-util = {version="0.19.6",features=["lexer"]}
 regex = "1"
+lazy_static = "1.4.0"
 
 [build-dependencies.lalrpop]
 version = "0.19.6"

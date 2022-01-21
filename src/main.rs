@@ -2,9 +2,12 @@
 extern crate derive_more;
 #[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate lazy_static;
 use std::{io, fs};
 mod sysY;
 mod eeyore;
+mod tigger;
 
 use crate::clap::Parser;
 
@@ -32,5 +35,11 @@ fn main() {
             Ok(t) => {fs::write(c.oufile,sysY::compile::compile(t).print());},
             Err(v) => println!("{}",v)
         }
+    }else if c.tig {
+        // not implemented
+    }else{
+        let inFile = fs::read_to_string(c.infile).expect("Fuck.");
+        let r = tigger::inst::Prog::parse(inFile);
+        fs::write(c.oufile, r.tr());
     }
 }

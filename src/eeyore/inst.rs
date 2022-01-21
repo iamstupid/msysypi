@@ -1,13 +1,13 @@
 use derive_more::{Display};
 use std::fmt;
-#[derive(Display,Copy,Clone)]
+#[derive(Display,Copy,Clone,PartialEq)]
 pub enum UOper{
     #[display(fmt="-")]
     Neg,
     #[display(fmt="!")]
     Not
 }
-#[derive(Display,Copy,Clone)]
+#[derive(Display,Copy,Clone,PartialEq)]
 pub enum Oper{
     #[display(fmt="+")]
     Add,

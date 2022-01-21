@@ -12,15 +12,14 @@
                 "args": [
                     "build",
                     "--bin=msysypi",
-                    "--package=msysypi",
-                    "--release"
+                    "--package=msysypi"
                 ],
                 "filter": {
                     "name": "msysypi",
                     "kind": "bin"
                 }
             },
-            "args": "-S -e testcase.c -o testcase.S",
+            "args": "testcase.tigger -o testcase.S",
             "cwd": "${workspaceFolder}"
         },
         {
