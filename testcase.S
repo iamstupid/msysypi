@@ -1,64 +1,67 @@
-   .comm v0, 8, 4
-   .text
-    .align 2
-    .global func
-    .type func, @function
-func:
-    addi sp, sp, -16
-    sw ra,12(sp)
-la t1,v0
-lw s4,0(t1)
-li t0,3
-sub s4,t0,s4
-li s0,4
-mul s4,s4,s0
-add s4,a0,s4
-lw a0,0(s4)
-mv a0,a0
-lw ra, 12(sp)
-addi sp, sp, 16
-ret
+    .comm v1,40,4
+    .global v0
+    .section .sdata
+    .align  2
+    .type   v0, @object
+    .size   v0, 4
+v0:
+    .word   0
 
-    .size func,.-func
-   .text
+
+    .text
     .align 2
     .global main
     .type main, @function
 main:
-    addi sp, sp, -32
-    sw ra,28(sp)
-la t1,v0
-li t0,1
-sw t0,0(t1)
-la t1,v0
-li t0,2
-sw t0,4(t1)
-addi t1,sp,4
-li t0,-1
-sw t0,0(t1)
-addi t1,sp,4
-lw s4,0(t1)
-addi s4,s4,-2
-addi t1,sp,8
-sw s4,0(t1)
-addi t1,sp,8
-lw s4,0(t1)
-mv s4,s4
-addi t1,sp,12
-li t0,16
-sw t0,0(t1)
-addi t0,sp,4
-addi a0,t0,0
-sw s4,16(sp)
-mv a0,a0
-call func
-mv a0,a0
-lw s4,16(sp)
-addi a3,a0,2
-add a0,a3,s4
-mv a0,a0
-lw ra, 28(sp)
-addi sp, sp, 32
-ret
+    addi sp, sp, -96
+    sw ra,92(sp)
+    call getint
+    la s4,v0
+    sw a0,0(s4)
+    lui s1,%hi(v0)
+    lw s1,%lo(v0)(s1)
+    li s2,10
+    ble s1,s2,.l0
+    li a0,1
+    lw ra, 92(sp)
+    addi sp, sp, 96
+    ret
+.l0:
+    li s1,0
+    sw s1,0(sp)
+    lw s1,0(sp)
+    sw s1,16(sp)
+.l1:
+    lw s1,0(sp)
+    lui s2,%hi(v0)
+    lw s2,%lo(v0)(s2)
+    bge s1,s2,.l2
+    call getint
+    sw a0,32(sp)
+    lw s1,0(sp)
+    li s2,4
+    mul s1,s1,s2
+    sw s1,48(sp)
+    lw s1,48(sp)
+    la s2,v1
+    add s1,s1,s2
+    lw s1,0(s1)
+    sw s1,64(sp)
+    lw s1,16(sp)
+    lw s2,64(sp)
+    add s1,s1,s2
+    sw s1,16(sp)
+    lw s1,0(sp)
+    li s2,1
+    add s1,s1,s2
+    sw s1,0(sp)
+    j .l1
+.l2:
+    lw a0,16(sp)
+    call putint
+    li a0,0
+    lw ra, 92(sp)
+    addi sp, sp, 96
+    ret
 
     .size main,.-main

@@ -36,7 +36,7 @@ pub enum Oper{
     #[display(fmt="||")]
     Or
 }
-#[derive(Display,Copy,Clone,PartialEq)]
+#[derive(Display,Copy,Clone,PartialEq,Eq,Hash)]
 pub enum VarUsage{
     #[display(fmt="T")]
     Var,
@@ -45,7 +45,7 @@ pub enum VarUsage{
     #[display(fmt="p")]
     Param
 }
-#[derive(Display,Copy,Clone,PartialEq)]
+#[derive(Display,Copy,Clone,PartialEq,Eq,Hash)]
 #[display(fmt="{}{}",_0,_1)]
 pub struct Var(pub VarUsage,pub i32);
 #[derive(Display,Copy,Clone,PartialEq)]

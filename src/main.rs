@@ -36,9 +36,18 @@ fn main() {
             Err(v) => println!("{}",v)
         }
     }else if c.tig {
-        // not implemented
+        // not impl
     }else{
-        let inFile = fs::read_to_string(c.infile).expect("Fuck.");
-        fs::write(c.oufile, tigger::inst::Prog::ass(inFile));
+        let q = c.infile.clone();
+        if q.ends_with(".eeyore"){
+            // eey => riscv
+            let inFile = fs::read_to_string(c.infile).expect("Fuck.");
+            let z = eeyore::parser::Parse(&inFile);
+            fs::write(c.oufile, eeyore::trans::YAss(z));
+        }else{
+            // tig => riscv
+            let inFile = fs::read_to_string(c.infile).expect("Fuck.");
+            fs::write(c.oufile, tigger::inst::Prog::ass(inFile));
+        }
     }
 }

@@ -71,18 +71,21 @@ lazy_static!(
 );
 
 #[derive(Clone)]
-struct Fn{
-    name:i32,
-    par:i32,
-    sta:i32,
-    inst:Vec<Inst>
+pub struct Fn{
+    pub name:i32,
+    pub par:i32,
+    pub sta:i32,
+    pub inst:Vec<Inst>
 }
+impl Fn{ pub fn new()->Fn{Fn{name:0,par:0,sta:0,inst:vec![]}} }
 
 #[derive(Clone)]
 pub struct Prog{
     vdef: Vec<VarD>,
     fdef: Vec<Fn>
 }
+
+impl Fn{pub fn ps(&mut self, a:Inst){self.inst.push(a)} }
 
 pub fn fnm(a:&str) -> i32{
     let mut z = fglo.lock().unwrap();
@@ -187,7 +190,9 @@ pub enum Inst{
     Vld(i32,u8),
     Sla(i32,u8),
     Vla(i32,u8),
-    Edf
+    Edf,
+    /// Extended!
+    Spa(u8,u8) // u8 = sp + u8
 }
 fn popr(a:u8, u:u8, o:Oper, v:u8) -> String{
     use Oper::*;
@@ -206,29 +211,28 @@ fn popr(a:u8, u:u8, o:Oper, v:u8) -> String{
         Eq => ("xor",1),
         Ne => ("",2)
     };
-    if b == 0 { format!("{} {},{},{}\n",ao,sreg(a),sreg(u),sreg(v)) }
+    if b == 0 { format!("    {} {},{},{}\n",ao,sreg(a),sreg(u),sreg(v)) }
     else if b ==1 {
-        format!("{} {},{},{}\nseqz {},{}\n",ao,sreg(a),sreg(u),sreg(v),sreg(a),sreg(a))
+        format!("    {} {},{},{}\n    seqz {},{}\n",ao,sreg(a),sreg(u),sreg(v),sreg(a),sreg(a))
     }else {match o{
-        And => format!(
-"snez {},{}
-snez s0,{}
-and {},{},s0\n",sreg(a),sreg(u),sreg(v),sreg(a),sreg(a)),
-        Or => format!("or {},{},{}\nsnez {},{}\n",sreg(a),sreg(u),sreg(v),sreg(a),sreg(a)),
-        Ne => format!("xor {},{},{}\nsnez {},{}\n",sreg(a),sreg(u),sreg(v),sreg(a),sreg(a)),
+        And => format!("    snez {},{}
+    snez s0,{}
+    and {},{},s0\n",sreg(a),sreg(u),sreg(v),sreg(a),sreg(a)),
+        Or => format!("    or {},{},{}\n    snez {},{}\n",sreg(a),sreg(u),sreg(v),sreg(a),sreg(a)),
+        Ne => format!("    xor {},{},{}\n    snez {},{}\n",sreg(a),sreg(u),sreg(v),sreg(a),sreg(a)),
         _ => panic!("impossible branch")
     }}
 }
 fn sw<A:fmt::Display, B:fmt::Display>(a:A,c:i32,d:B) -> String{
-    if is_int12(c) { format!("sw {},{}({})\n",d,c,a) } else {
-        let t = format!("li s0,{}\nadd s0,s0,{}\n",c,a);
-        format!("{}sw {},0(s0)\n",t,d)
+    if is_int12(c) { format!("    sw {},{}({})\n",d,c,a) } else {
+        let t = format!("    li s0,{}\n    add s0,s0,{}\n",c,a);
+        format!("{}    sw {},0(s0)\n",t,d)
     }
 }
 fn lw<A:fmt::Display, B:fmt::Display>(a:A,c:B,d:i32) -> String{
-    if is_int12(d) { format!("lw {},{}({})\n",a,d,c) } else {
-        let t = format!("li s0,{}\nadd s0,s0,{}\n",d,c);
-        format!("{}lw {},0(s0)\n",t,a)
+    if is_int12(d) { format!("    lw {},{}({})\n",a,d,c) } else {
+        let t = format!("    li s0,{}\n    add s0,s0,{}\n",d,c);
+        format!("{}    lw {},0(s0)\n",t,a)
     }
 }
 impl Inst{
@@ -252,7 +256,7 @@ impl Inst{
             Vld(a,b) => format!("load v{} {}",a,sreg(b)),
             Sla(a,b) => format!("loadaddr {} {}",a,sreg(b)),
             Vla(a,b) => format!("loadaddr v{} {}",a,sreg(b)),
-            Edf => "".to_string()
+            _ => "".to_string()
         }
     }
     fn tr(&self, stk:i32) -> String {
@@ -263,55 +267,56 @@ impl Inst{
             Oi(a,b,c,d) => {
                 if is_int12(d) {
                     match c{
-                        Add => format!("addi {},{},{}\n",sreg(a),sreg(b),d),
-                        Lt => format!("slti {},{},{}\n",sreg(a),sreg(b),d),
-                        _ => format!("li s0,{}\n{}",d,popr(a,b,c,1))
+                        Add => format!("    addi {},{},{}\n",sreg(a),sreg(b),d),
+                        Lt => format!("    slti {},{},{}\n",sreg(a),sreg(b),d),
+                        _ => format!("    li s0,{}\n{}",d,popr(a,b,c,1))
                     }
                 }else{
-                    format!("li s0,{}\n{}",d,popr(a,b,c,1))
+                    format!("    li s0,{}\n{}",d,popr(a,b,c,1))
                 }
             },
             Ou(a,c,d) => match c{
-                UOper::Neg => format!("neg {},{}\n",sreg(a),sreg(d)),
-                UOper::Not => format!("seqz {},{}\n",sreg(a),sreg(d))
+                UOper::Neg => format!("    neg {},{}\n",sreg(a),sreg(d)),
+                UOper::Not => format!("    seqz {},{}\n",sreg(a),sreg(d))
             },
-            Ts(a,b) => format!("mv {},{}\n",sreg(a),sreg(b)),
-            Li(a,b) => format!("li {},{}\n",sreg(a),b),
+            Ts(a,b) => format!("    mv {},{}\n",sreg(a),sreg(b)),
+            Li(a,b) => format!("    li {},{}\n",sreg(a),b),
             St(a,c,d) => sw(sreg(a), c, sreg(d)),
             Ld(a,c,d) => lw(sreg(a),sreg(c),d),
             Cj(a,b,c,d) => {
                 let r = match b{ Lt => "blt", Gt => "bgt", Le => "ble", Ge => "bge", Ne => "bne", Eq => "beq", _ => panic!("NTR")};
-                format!("{} {},{},.l{}\n",r,sreg(a),sreg(c),d)
+                format!("    {} {},{},.l{}\n",r,sreg(a),sreg(c),d)
             },
-            Jm(a) => format!("j .l{}\n",a),
+            Jm(a) => format!("    j .l{}\n",a),
             Lb(a) => format!(".l{}:\n",a),
-            Cl(a) => format!("call {}\n",sfn(a)),
+            Cl(a) => format!("    call {}\n",sfn(a)),
             Rt => if is_int12(stk) {
-format!("lw ra, {stk2}(sp)
-addi sp, sp, {stk1}
-ret\n",stk1=stk,stk2=stk-4)}else{
-format!("
-li s0,{stk}
-add sp,sp,s0
-lw ra, -4(sp)
-ret
+format!("    lw ra, {stk2}(sp)
+    addi sp, sp, {stk1}
+    ret\n",stk1=stk,stk2=stk-4)}else{
+format!("    li s0,{stk}
+    add sp,sp,s0
+    lw ra, -4(sp)
+    ret
 ",stk=stk)
 },
             Sst(a,b) => sw("sp",b*4,sreg(a)),
             Sld(a,b) => lw(sreg(b),"sp",a*4),
-            Vld(a,b) => format!("lui {},%hi(v{})\nlw {},%lo(v{})({})\n",sreg(b),a,sreg(b),a,sreg(b)),
+            Vld(a,b) => format!("    lui {},%hi(v{})\n    lw {},%lo(v{})({})\n",sreg(b),a,sreg(b),a,sreg(b)),
             Sla(a,b) => {
                 if is_int10(a){
-                    format!("addi {},sp,{}\n",sreg(b),a*4)
+                    format!("    addi {},sp,{}\n",sreg(b),a*4)
                 }else{
-                    format!(
-"li s0,{}
-add {},s0,sp\n",a*4,sreg(b)
+                    format!("    li s0,{}
+    add {},s0,sp\n",a*4,sreg(b)
                     )
                 }
             },
-            Vla(a,b) => format!("la {},v{}\n",sreg(b),a),
-            Edf => "".to_string()
+            Vla(a,b) => format!("    la {},v{}\n",sreg(b),a),
+            Edf => "".to_string(),
+            // Extended tigger are meant for direct RISC-V generation, not applicable for
+            // Eey -> Tig testing
+            Spa(a,b) => format!("    add {},sp,{}\n",sreg(a),sreg(b))
         }
     }
 }
@@ -328,7 +333,7 @@ impl VarD{
         use VarD::*;
         match *self{
             I(a,b) => format!(
-"   .global v{}
+"    .global v{}
     .section .sdata
     .align 2
     .type v{},@object
@@ -336,19 +341,18 @@ impl VarD{
 v{}:
     .word {}\n",a,a,a,a,b)
         ,
-        A(a,b) => format!(
-"   .comm v{}, {}, 4\n",a,b)
+        A(a,b) => format!("\
+    .comm v{}, {}, 4\n",a,b)
         }
     }
 }
 impl Fn{
-    fn tr(&self) -> String{
+    pub fn tr(&self) -> String{
         let func = sfn(self.name);
         let stk = (self.sta/4+1)*16;
         let code = self.inst.iter().map(|x| x.tr(stk)).collect::<Vec<String>>().concat();
         if is_int12(stk){
-        format!(
-"   .text
+        format!("    .text
     .align 2
     .global {func}
     .type {func}, @function
@@ -358,17 +362,16 @@ impl Fn{
 {code}
     .size {func},.-{func}\n",func=func,code=code,stk1=-stk,stk2=stk-4)
 }else{
-    format!(
-"   .text
-.align 2
-.global {func}
-.type {func}, @function
+    format!("    .text
+    .align 2
+    .global {func}
+    .type {func}, @function
 {func}:
-sw ra,-4(sp)
-li s0, {stk1}
-add sp, sp, s0
+    sw ra,-4(sp)
+    li s0, {stk1}
+    add sp, sp, s0
 {code}
-.size {func},.-{func}\n",func=func,code=code,stk1=-stk)
+    .size {func},.-{func}\n",func=func,code=code,stk1=-stk)
 }
 }
 }
