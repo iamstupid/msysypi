@@ -256,6 +256,7 @@ impl Inst{
             Vld(a,b) => format!("load v{} {}",a,sreg(b)),
             Sla(a,b) => format!("loadaddr {} {}",a,sreg(b)),
             Vla(a,b) => format!("loadaddr v{} {}",a,sreg(b)),
+            Spa(a,b) => format!(" [spa] add {},sp,{}\n",sreg(a),sreg(b)),
             _ => "".to_string()
         }
     }
@@ -350,7 +351,13 @@ impl Fn{
     pub fn tr(&self) -> String{
         let func = sfn(self.name);
         let stk = (self.sta/4+1)*16;
-        let code = self.inst.iter().map(|x| x.tr(stk)).collect::<Vec<String>>().concat();
+        let code = self.inst.iter().map(|x|{
+            let t =x.tr(stk);
+           /* let s = x.ts();
+            format!("{} # {}\n",t,s)
+            */
+          t
+        }).collect::<Vec<String>>().concat();
         if is_int12(stk){
         format!("    .text
     .align 2

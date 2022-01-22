@@ -143,10 +143,10 @@ pub fn YAss(a:Vec<Yi>) -> String{
                 if let Some((i,j)) = c{
                     if j==0 {
                         // load local int
-                        nfn.ps(Sld(i,b))
+                        nfn.ps(Sld(i>>2,b))
                     }else{
                         // load local array address
-                        nfn.ps(Sla(i,b))
+                        nfn.ps(Sla(i>>2,b))
                     }
                 }else{
                     let (i,j) = gv.fnd(v);
@@ -167,30 +167,42 @@ pub fn YAss(a:Vec<Yi>) -> String{
         let a = a.tu();
         let S4 = s4.tu();
         let S5 = s5.tu();
-        let (bvname,bind) = match b { LVal::Sym(t) => (t,RVal::Int(0)), LVal::SymA(t,a)=> (t,a)};
+        let (bvname,bind,r) = match b { LVal::Sym(t) => (t,RVal::Int(0),false), LVal::SymA(t,a)=> (t,a,true)};
         let c = lv.fnd(bvname);
         if let Some((i,j)) = c{
-            if j == 0{
+            if !r{
                 // local int
-                nfn.ps(Sst(a,i));
+                nfn.ps(Sst(a,i>>2));
             }else{
                 // local array
                 match bind{
                     RVal::Int(t) =>{
-                        // addressed with int
-                        nfn.ps(Sst(a,i+t));
+                        if j == 0{
+                            nfn.ps(Sld(i>>2,S4));
+                            nfn.ps(St(S4,t,a));
+                        }else{
+                            // addressed with int
+                            nfn.ps(Sst(a,(i+t)>>2));
+                        }
                     },
                     RVal::Sym(t) =>{
-                        // addressed with sym
-                        load(lv,gv,nfn,RVal::Sym(t),s4);
-                        nfn.ps(Spa(S4,S4));
-                        nfn.ps(St(S4,i,a));
+                        if j == 0{
+                            load(lv,gv,nfn,RVal::Sym(t),s5);
+                            nfn.ps(Sld(i>>2,S4));
+                            nfn.ps(Op(S4,S4,Add,S5));
+                            nfn.ps(St(S5,0,a));
+                        } else {
+                            // addressed with sym
+                            load(lv,gv,nfn,RVal::Sym(t),s4);
+                            nfn.ps(Spa(S4,S4));
+                            nfn.ps(St(S4,i,a));
+                        }
                     }
                 }
             }
         }else{
             let (i,j) = gv.fnd(bvname);
-            if j == 0{
+            if !r{
                 // global int
                 nfn.ps(Vla(i,S4));
                 nfn.ps(St(S4,0,a));
@@ -199,12 +211,12 @@ pub fn YAss(a:Vec<Yi>) -> String{
                 match bind{
                     RVal::Int(t) =>{
                         // addressed with int
-                        nfn.ps(Vla(i,S4));
+                        if j == 0 {nfn.ps(Vld(i,S4));} else {nfn.ps(Vla(i,S4));}
                         nfn.ps(St(S4,t,a));
                     },
                     RVal::Sym(t) =>{
                         // addressed with sym
-                        nfn.ps(Vla(i,S4));
+                        if j == 0 {nfn.ps(Vld(i,S4));} else {nfn.ps(Vla(i,S4));}
                         load(lv,gv,nfn,RVal::Sym(t),s5);
                         nfn.ps(Op(S4,S4,Add,S5));
                         nfn.ps(St(S4,0,a));
@@ -293,12 +305,14 @@ pub fn YAss(a:Vec<Yi>) -> String{
                     nfn.par=i;
                     for i in (0..i){
                         let cpos = lv.reg(Yv(VarUsage::Param,i), 0);
-                        nfn.inst.push(Sst((20+i) as u8,cpos));
+                        nfn.inst.push(Sst((20+i) as u8,cpos>>2));
                     }
                 },
                 _ => panic!("Those should not appear outside function domain")
             }
         }
     }
-    format!("{}\n{}",gv.tr(),fns.iter().map(|x| x.tr()).collect::<Vec<String>>().concat())
+    format!("{}\n{}",gv.tr(),fns.iter().map(|x|{
+        x.tr()
+    }).collect::<Vec<String>>().concat())
 }
