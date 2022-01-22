@@ -1,4 +1,3 @@
-    .comm v1,40,4
     .global v0
     .section .sdata
     .align  2
@@ -7,6 +6,7 @@
 v0:
     .word   0
 
+    .comm v1,40,4
 
     .text
     .align 2
