@@ -1,5 +1,5 @@
 // auto-generated: "lalrpop 0.19.6"
-// sha3: 48da4825c51715596afb1992b2ca1f301f237d1bbec34bf0c0d0641ad6633d23
+// sha3: 9f76eb933d573b4c7c29fb19cc67e2caa8a5b21b5b081b3e07ec8f052846ad1
 use crate::eeyore::inst::*;
 #[allow(unused_extern_crates)]
 extern crate lalrpop_util as __lalrpop_util;
@@ -450,7 +450,7 @@ mod __parse__II {
             r###""var""###,
             r###""||""###,
             r###"r#"0|[1-9][0-9]*"#"###,
-            r###"r#"f_([a-zA-Z0-9]*)"#"###,
+            r###"r#"f_([a-zA-Z0-9_]*)"#"###,
         ];
         __TERMINAL.iter().enumerate().filter_map(|(index, terminal)| {
             let next_state = __action(__state, index);
@@ -930,7 +930,7 @@ mod __parse__II {
         _: core::marker::PhantomData<(&'input ())>,
     ) -> (usize, usize)
     {
-        // Fun = r#"f_([a-zA-Z0-9]*)"# => ActionFn(5);
+        // Fun = r#"f_([a-zA-Z0-9_]*)"# => ActionFn(5);
         let __sym0 = __pop_Variant0(__symbols);
         let __start = __sym0.0.clone();
         let __end = __sym0.2.clone();
@@ -1809,7 +1809,7 @@ mod __intern_token {
         let __strs: &[(&str, bool)] = &[
             ("^(0|[1-9][0-9]*)", false),
             ("^([\t-\r \u{85}\u{a0}\u{1680}\u{2000}-\u{200a}\u{2028}-\u{2029}\u{202f}\u{205f}\u{3000}]+)", true),
-            ("^(f_([0-9A-Za-z]*))", false),
+            ("^(f_([0-9A-Z_a-z]*))", false),
             ("^(!)", false),
             ("^(!=)", false),
             ("^(%)", false),

@@ -31,14 +31,14 @@ match{
     "t",
     "p",
 }else{
-    r"f_([a-zA-Z0-9]*)", // function
+    r"f_([a-zA-Z0-9_]*)", // function
     r"0|[1-9][0-9]*", // nat
     r"\s+" => {} // space
 }
 Num:i32 = { QNat => (<> as i32), "-" <QNat> => ((-<>) as i32) };
 QNat:i64 = r"0|[1-9][0-9]*" => i64::from_str_radix(<>,10).unwrap();
 Nat:i32 = QNat => <> as i32;
-Fun:FnName = r"f_([a-zA-Z0-9]*)" => FnName(String::from(&<>[2..]));
+Fun:FnName = r"f_([a-zA-Z0-9_]*)" => FnName(String::from(&<>[2..]));
 Op:Oper = {
     "*" => Oper::Mul,
     "/" => Oper::Div,
