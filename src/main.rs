@@ -39,15 +39,29 @@ fn main() {
         // not impl
     }else{
         let q = c.infile.clone();
-        if q.ends_with(".eeyore"){
-            // eey => riscv
+        if q.ends_with(".c"){
+            // c => riscv
             let inFile = fs::read_to_string(c.infile).expect("Fuck.");
-            let z = eeyore::parser::Parse(&inFile);
-            fs::write(c.oufile, eeyore::trans::YAss(z));
-        }else{
-            // tig => riscv
-            let inFile = fs::read_to_string(c.infile).expect("Fuck.");
-            fs::write(c.oufile, tigger::inst::Prog::ass(inFile));
+            let r = sysY::sysY::ProgramParser::new().parse(&inFile);
+            match r {
+                Ok(t) => {
+                    let t = sysY::compile::compile(t);
+                    let z = t.ins.into_iter().collect::<Vec<eeyore::inst::Inst>>();
+                    fs::write(c.oufile,eeyore::trans::YAss(z));
+                },
+                Err(v) => println!("{}",v)
+            }
+        }else {
+            if q.ends_with(".eeyore"){
+                // eey => riscv
+                let inFile = fs::read_to_string(c.infile).expect("Fuck.");
+                let z = eeyore::parser::Parse(&inFile);
+                fs::write(c.oufile, eeyore::trans::YAss(z));
+            }else{
+                // tig => riscv
+                let inFile = fs::read_to_string(c.infile).expect("Fuck.");
+                fs::write(c.oufile, tigger::inst::Prog::ass(inFile));
+            }
         }
     }
 }

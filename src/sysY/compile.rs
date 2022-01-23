@@ -106,7 +106,7 @@ impl VStack{
     fn top(&mut self)->&mut VScope{ self.st.iter_mut().rev().next().unwrap() }
 }
 pub struct Segment{
-    ins: VecDeque<Inst>,
+    pub ins: VecDeque<Inst>,
     list: Vec<Vec<i32>>,
     ret: Option<RVal>
 }
